@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -34,17 +35,29 @@ func extractTitle(req *http.Request, resp *http.Response, err error) {
 				break
 			}
 		}
-
 	}
 }
 
 func main() {
-
 	var concurrency = 20
 	flag.IntVar(&concurrency, "c", 20, "Concurrency")
+	proxy := flag.String("proxy", "", "HTTP proxy URL")
 	flag.Parse()
 
 	p := gahttp.NewPipelineWithClient(gahttp.NewClient(gahttp.SkipVerify))
+
+	// Set the proxy if provided
+	if *proxy != "" {
+		proxyURL, err := url.Parse(*proxy)
+		if err != nil {
+			fmt.Printf("Failed to parse proxy URL: %v\n", err)
+			return
+		}
+		p.Client.Transport = &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+		}
+	}
+
 	p.SetConcurrency(concurrency)
 	extractFn := gahttp.Wrap(extractTitle, gahttp.CloseBody)
 
@@ -55,5 +68,4 @@ func main() {
 	p.Done()
 
 	p.Wait()
-
 }
