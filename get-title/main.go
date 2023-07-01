@@ -35,36 +35,22 @@ func extractTitle(req *http.Request, resp *http.Response, err error) {
 				break
 			}
 		}
-
 	}
 }
 
 func main() {
 	var (
 		concurrency int
-		proxy       string
+		proxyURL    string
 	)
 
 	flag.IntVar(&concurrency, "c", 20, "Concurrency")
-	flag.StringVar(&proxy, "p", "", "Proxy URL")
+	flag.StringVar(&proxyURL, "p", "", "Proxy URL (e.g., http://proxy.example.com:8080)")
 	flag.Parse()
 
-	p := gahttp.NewPipeline()
+	p := gahttp.NewPipelineWithClient(newHTTPClient(proxyURL))
 	p.SetConcurrency(concurrency)
 	extractFn := gahttp.Wrap(extractTitle, gahttp.CloseBody)
-
-	if proxy != "" {
-		proxyURL, err := url.Parse(proxy)
-		if err != nil {
-			fmt.Printf("Failed to parse proxy URL: %s\n", err)
-			return
-		}
-
-		transport := &http.Transport{
-			Proxy: http.ProxyURL(proxyURL),
-		}
-		p.Client().Transport = transport
-	}
 
 	sc := bufio.NewScanner(os.Stdin)
 	for sc.Scan() {
@@ -73,4 +59,23 @@ func main() {
 	p.Done()
 
 	p.Wait()
+}
+
+func newHTTPClient(proxyURL string) *http.Client {
+	if proxyURL == "" {
+		return gahttp.NewClient(gahttp.SkipVerify)
+	}
+
+	proxyURLParsed, err := url.Parse(proxyURL)
+	if err != nil {
+		fmt.Printf("Failed to parse proxy URL: %v\n", err)
+		os.Exit(1)
+	}
+
+	transport := &http.Transport{
+		Proxy: http.ProxyURL(proxyURLParsed),
+	}
+	return &http.Client{
+		Transport: transport,
+	}
 }
