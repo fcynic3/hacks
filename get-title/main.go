@@ -53,7 +53,7 @@ func main() {
 	extractFn := gahttp.Wrap(extractTitle, gahttp.CloseBody)
 
 	client := newHTTPClient(proxyURL)
-	p.SetClient(client)
+	p.Client = client
 
 	sc := bufio.NewScanner(os.Stdin)
 	for sc.Scan() {
