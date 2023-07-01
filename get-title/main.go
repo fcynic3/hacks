@@ -48,9 +48,12 @@ func main() {
 	flag.StringVar(&proxyURL, "p", "", "Proxy URL (e.g., http://proxy.example.com:8080)")
 	flag.Parse()
 
-	p := gahttp.NewPipelineWithClient(newHTTPClient(proxyURL))
+	p := gahttp.NewPipeline()
 	p.SetConcurrency(concurrency)
 	extractFn := gahttp.Wrap(extractTitle, gahttp.CloseBody)
+
+	client := newHTTPClient(proxyURL)
+	p.SetClient(client)
 
 	sc := bufio.NewScanner(os.Stdin)
 	for sc.Scan() {
